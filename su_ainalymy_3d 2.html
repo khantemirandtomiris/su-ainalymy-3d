@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="kk">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Табиғаттағы су айналымы — 3D модель</title>
+<style>
+  html,body{margin:0;height:100%;overflow:hidden;background:#dff3ff;font-family:system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+  #scene{display:block;width:100%;height:100%}
+  #panel{position:fixed;top:12px;left:12px;right:12px;max-width:520px;padding:13px 15px;border-radius:16px;background:rgba(255,255,255,.88);box-shadow:0 6px 24px #17466b20;backdrop-filter:blur(8px);color:#12314a}
+  h1{font-size:clamp(18px,3.5vw,25px);margin:0 0 5px}
+  #desc{font-size:14px;line-height:1.4;margin:0 0 10px}
+  .controls{display:flex;gap:8px;flex-wrap:wrap}
+  button{border:0;border-radius:10px;padding:9px 12px;background:#126eaa;color:white;font-weight:650;font-size:13px}
+  button.secondary{background:#e5f2fa;color:#16415d}
+  #hint{position:fixed;bottom:12px;left:12px;right:12px;text-align:center;font-size:12px;color:#12314a;background:#ffffffbf;border-radius:12px;padding:9px}
+</style>
+</head>
+<body>
+<div id="panel">
+  <h1>🌦️ ТАБИҒАТТАҒЫ СУ АЙНАЛЫМЫ</h1>
+  <p id="desc">Су күннің жылуынан буланады, бу салқындап бұлтқа айналады, кейін жаңбыр болып жерге түседі.</p>
+  <div class="controls">
+    <button id="toggle">⏸ Анимацияны тоқтату</button>
+    <button id="view" class="secondary">↻ Бастапқы көрініс</button>
+    <button id="labels" class="secondary">🏷️ Белгілерді жасыру</button>
+  </div>
+</div>
+<div id="hint">Модельді саусақпен сүйреп бұрыңыз • екі саусақпен жақындатыңыз/алыстатыңыз • компьютерде тышқанмен бұрыңыз</div>
+<canvas id="scene"></canvas>
+<script type="module">
+import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
+import { OrbitControls } from 'https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/controls/OrbitControls.js';
+
+const canvas=document.querySelector('#scene');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true,alpha:false});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.shadowMap.enabled=true;
+renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+renderer.outputColorSpace=THREE.SRGBColorSpace;
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0xdff3ff);
+scene.fog=new THREE.Fog(0xdff3ff,24,55);
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,.1,100);
+camera.position.set(15,12,19);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true; controls.dampingFactor=.06;
+controls.target.set(0,3.2,0); controls.minDistance=9; controls.maxDistance=35;
+scene.add(new THREE.HemisphereLight(0xffffff,0x8eb2c5,2.0));
+const sunLight=new THREE.DirectionalLight(0xfff1c1,3.0); sunLight.position.set(-8,15,10); sunLight.castShadow=true; scene.add(sunLight);
+
+const mat=(color,roughness=.85)=>new THREE.MeshStandardMaterial({color,roughness});
+const green=mat(0x64ad67), darkGreen=mat(0x2d7d4e), snow=mat(0xf5fbff), rock=mat(0x8799a4), sand=mat(0xe9d39b), waterMat=new THREE.MeshStandardMaterial({color:0x168bd2,roughness:.23,metalness:.12});
+const ground=new THREE.Mesh(new THREE.CylinderGeometry(9,9,1,64),mat(0x8bcf88));ground.position.y=-.55;ground.receiveShadow=true;scene.add(ground);
+const ocean=new THREE.Mesh(new THREE.CylinderGeometry(4.7,4.7,.22,64),waterMat);ocean.position.set(-3.6,.08,1.2);ocean.receiveShadow=true;scene.add(ocean);
+// Shore / sand crescent
+const shore=new THREE.Mesh(new THREE.TorusGeometry(4.72,.18,8,80),sand);shore.rotation.x=Math.PI/2;shore.position.set(-3.6,.02,1.2);scene.add(shore);
+// Mountains
+function cone(x,y,z,r,h,color,seg=6){const m=new THREE.Mesh(new THREE.ConeGeometry(r,h,seg),mat(color));m.position.set(x,y,z);m.castShadow=true;m.receiveShadow=true;scene.add(m);return m}
+cone(3.5,2.5,-2.8,3.2,5,0x7c969d,7);cone(5.6,2.1,-1.5,2.5,4.2,0x8eaaa9,7);cone(2.3,1.7,-1.0,2.1,3.4,0x668b78,7);
+cone(3.5,4.0,-2.8,1.25,1.7,0xf6fcff,7);cone(5.6,3.5,-1.5,.95,1.5,0xf6fcff,7);
+// Rolling hills
+for(const [x,z,s] of [[1.4,3.7,1.9],[4.8,3.5,2.1],[6,0,1.6],[-.1,4.9,1.7]]){
+ const hill=new THREE.Mesh(new THREE.SphereGeometry(s,24,16),green);hill.scale.y=.5;hill.position.set(x,.05,z);hill.castShadow=true;hill.receiveShadow=true;scene.add(hill);
+}
+// Trees
+function tree(x,z,scale=1){
+ const trunk=new THREE.Mesh(new THREE.CylinderGeometry(.12*scale,.18*scale,.9*scale,8),mat(0x80502d));trunk.position.set(x,.25*scale,z);trunk.castShadow=true;scene.add(trunk);
+ for(let i=0;i<3;i++){let t=new THREE.Mesh(new THREE.ConeGeometry(.55*scale-i*.08*scale,.9*scale,8),mat(i===0?0x25764a:0x348b52));t.position.set(x,(.72+i*.38)*scale,z);t.castShadow=true;scene.add(t);}
+}
+tree(1.1,4.2,.9);tree(2.0,4.9,.75);tree(5.7,3.6,.8);tree(6.4,2.6,.7);tree(-.1,3.6,.7);
+// Sun
+const sun=new THREE.Mesh(new THREE.SphereGeometry(1.05,32,24),new THREE.MeshBasicMaterial({color:0xffc83d}));sun.position.set(-7,9,-2);scene.add(sun);
+const sunGlow=new THREE.Mesh(new THREE.SphereGeometry(1.3,24,16),new THREE.MeshBasicMaterial({color:0xffdc75,transparent:true,opacity:.22}));sunGlow.position.copy(sun.position);scene.add(sunGlow);
+// Clouds, built from puff spheres
+const clouds=[];
+function cloud(x,y,z,s=1){
+ const g=new THREE.Group();
+ for(const [px,py,pz,r] of [[0,0,0,.8],[.75,.15,0,.65],[-.65,.05,.08,.58],[.25,.45,0,.62],[-.25,.32,.05,.62]]){
+  const puff=new THREE.Mesh(new THREE.SphereGeometry(r*s,20,16),new THREE.MeshStandardMaterial({color:0xffffff,roughness:1}));puff.position.set(px*s,py*s,pz*s);g.add(puff);
+ }
+ g.position.set(x,y,z);scene.add(g);clouds.push(g);return g;
+}
+cloud(-.2,7.2,-1.8,1.05);cloud(4.7,7.7,-3.5,.78);cloud(-4,7.4,-.5,.65);
+// Label sprites in Kazakh
+const labels=[];
+function label(text,x,y,z){
+ const c=document.createElement('canvas'),ctx=c.getContext('2d');c.width=512;c.height=128;
+ ctx.fillStyle='rgba(255,255,255,0.92)';ctx.strokeStyle='#2a79a8';ctx.lineWidth=5;
+ ctx.beginPath();ctx.roundRect(6,6,500,116,24);ctx.fill();ctx.stroke();
+ ctx.font='bold 34px Arial';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillStyle='#124568';ctx.fillText(text,256,64);
+ const tex=new THREE.CanvasTexture(c);tex.colorSpace=THREE.SRGBColorSpace;
+ const sp=new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,depthTest:false}));sp.position.set(x,y,z);sp.scale.set(4.0,1,1);scene.add(sp);labels.push(sp);return sp;
+}
+label('БУЛАНУ',-4.1,3.2,1.2);
+label('КОНДЕНСАЦИЯ',-.1,9.1,-1.8);
+label('ЖАУЫН-ШАШЫН',4.4,5.9,-2.8);
+label('ӨЗЕН АҒЫСЫ',3.4,1.2,2.7);
+// Animated water vapor particles rise from lake
+const vapor=[], rain=[];
+const particleMat=new THREE.MeshBasicMaterial({color:0x74d5ff});
+for(let i=0;i<38;i++){const p=new THREE.Mesh(new THREE.SphereGeometry(.075,8,6),particleMat);p.userData={phase:Math.random()*Math.PI*2};scene.add(p);vapor.push(p)}
+const rainMat=new THREE.MeshBasicMaterial({color:0x2e9de0});
+for(let i=0;i<75;i++){const p=new THREE.Mesh(new THREE.CylinderGeometry(.018,.018,.25,5),rainMat);p.userData={phase:Math.random()};scene.add(p);rain.push(p)}
+// River ribbon flowing from mountain to lake
+const riverPts=[new THREE.Vector3(3.4,.35,-1.4),new THREE.Vector3(3.0,.25,.0),new THREE.Vector3(1.8,.18,.8),new THREE.Vector3(.4,.15,1.3),new THREE.Vector3(-1.1,.15,1.4)];
+const riverCurve=new THREE.CatmullRomCurve3(riverPts);
+const river=new THREE.Mesh(new THREE.TubeGeometry(riverCurve,50,.16,8,false),waterMat);river.position.y=.08;scene.add(river);
+const flowDots=[];
+for(let i=0;i<16;i++){const d=new THREE.Mesh(new THREE.SphereGeometry(.07,8,6),new THREE.MeshBasicMaterial({color:0xb9f2ff}));scene.add(d);flowDots.push(d)}
+// Underground water layer, shown as blue band in front
+const underground=new THREE.Mesh(new THREE.BoxGeometry(5.5,.22,.28),new THREE.MeshStandardMaterial({color:0x268ed1,transparent:true,opacity:.85}));underground.position.set(2,.05,6.9);scene.add(underground);
+label('ЖЕРАСТЫ СУЫ',2,1.05,7.1);
+let running=true, showLabels=true, clock=new THREE.Clock();
+document.querySelector('#toggle').onclick=()=>{running=!running;document.querySelector('#toggle').textContent=running?'⏸ Анимацияны тоқтату':'▶ Анимацияны жалғастыру'};
+document.querySelector('#view').onclick=()=>{camera.position.set(15,12,19);controls.target.set(0,3.2,0);controls.update()};
+document.querySelector('#labels').onclick=()=>{showLabels=!showLabels;labels.forEach(l=>l.visible=showLabels);document.querySelector('#labels').textContent=showLabels?'🏷️ Белгілерді жасыру':'🏷️ Белгілерді көрсету'};
+function animate(){
+ requestAnimationFrame(animate);const t=clock.getElapsedTime();
+ if(running){
+  vapor.forEach((p,i)=>{const ph=(t*.22+p.userData.phase)%(Math.PI*2);p.position.set(-3.6+Math.sin(ph*1.7+i)*.9,1.0+((t*.65+i*.37)%5.4),1.2+Math.cos(ph+i)*.7);p.scale.setScalar(.8+Math.sin(t*2+i)*.2)});
+  rain.forEach((p,i)=>{const ph=(t*1.7+p.userData.phase*5+i*.13)%4;p.position.set(4.45+Math.sin(i*2)*.75,6.4-ph,-2.6+Math.cos(i*1.7)*.5);p.visible=ph<3.6});
+  flowDots.forEach((p,i)=>{const u=(t*.08+i/flowDots.length)%1;p.position.copy(riverCurve.getPoint(u));p.position.y+=.17});
+  clouds.forEach((c,i)=>{c.position.x+=Math.sin(t*.25+i)*.0008});
+  waterMat.color.setHSL(.56,.78,.43+Math.sin(t*1.4)*.015);
+ }
+ controls.update();renderer.render(scene,camera);
+}
+animate();
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight)});
+</script>
+</body>
+</html>
